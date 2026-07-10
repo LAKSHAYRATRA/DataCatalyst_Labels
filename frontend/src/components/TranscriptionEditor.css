@@ -1,0 +1,49 @@
+.transcription-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.transcription-textarea {
+  flex: 1;
+  min-height: 200px;
+  padding: 14px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.7;
+  resize: vertical;
+  transition: border-color 0.15s;
+}
+
+.transcription-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.transcription-textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.transcription-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.transcription-save {
+  margin-top: 12px;
+}
+
+.transcription-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}

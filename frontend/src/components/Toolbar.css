@@ -1,0 +1,96 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 16px;
+  transition: all 0.15s;
+}
+
+.toolbar-btn:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.toolbar-btn.active {
+  background: var(--accent-glow);
+  color: var(--accent);
+}
+
+.toolbar-btn.play-btn {
+  width: 44px;
+  height: 44px;
+  background: var(--accent);
+  color: white;
+  font-size: 18px;
+  border-radius: 50%;
+}
+
+.toolbar-btn.play-btn:hover {
+  background: var(--accent-hover);
+  color: white;
+}
+
+.toolbar-time {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-primary);
+  min-width: 140px;
+}
+
+.toolbar-zoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-zoom label {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.toolbar-zoom input[type='range'] {
+  width: 120px;
+  accent-color: var(--accent);
+}
+
+.toolbar-zoom-value {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  min-width: 48px;
+}
+
+.toolbar-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
