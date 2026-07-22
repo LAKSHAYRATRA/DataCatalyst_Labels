@@ -55,6 +55,59 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Transliterate endpoint
+router.get('/transliterate', async (req, res) => {
+  const text = req.query.text;
+  const lang = req.query.lang || 'hi';
+  if (!text) {
+    return res.json({ suggestions: [] });
+  }
+
+  // Map simple language code to Google Input Tools itc code
+  const langMap = {
+    hi: 'hi-t-i0-und',
+    te: 'te-t-i0-und',
+    ta: 'ta-t-i0-und',
+    bn: 'bn-t-i0-und',
+    mr: 'mr-t-i0-und',
+    kn: 'kn-t-i0-und',
+    ml: 'ml-t-i0-und',
+    gu: 'gu-t-i0-und',
+    pa: 'pa-t-i0-und',
+    ur: 'ur-t-i0-und',
+  };
+  const itc = langMap[lang] || langMap['hi'];
+
+  const https = require('https');
+  const url = `https://inputtools.google.com/request?text=${encodeURIComponent(text)}&itc=${itc}&num=10&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`;
+
+
+
+  https.get(url, (apiRes) => {
+    let data = '';
+    apiRes.on('data', (chunk) => {
+      data += chunk;
+    });
+    apiRes.on('end', () => {
+      try {
+        const parsed = JSON.parse(data);
+        if (parsed[0] === 'SUCCESS') {
+          const suggestions = parsed[1][0][1] || [];
+          // Deduplicate and filter empty
+          const uniqueSuggestions = Array.from(new Set(suggestions)).filter(Boolean);
+          return res.json({ suggestions: uniqueSuggestions });
+        }
+        res.json({ suggestions: [] });
+      } catch (e) {
+        res.json({ suggestions: [] });
+      }
+    });
+  }).on('error', (err) => {
+    console.error('Transliteration API error:', err);
+    res.json({ suggestions: [] });
+  });
+});
+
 // Get project
 router.get('/:id', async (req, res) => {
   const project = await getProject(req.params.id);
@@ -83,45 +136,57 @@ router.put('/:id/labels', async (req, res) => {
 });
 
 // Upload audio
-router.post('/:id/audio', uploadAudio.single('audio'), async (req, res) => {
-  const project = await getProject(req.params.id);
-  if (!project) return res.status(404).json({ error: 'Project not found' });
-  if (!req.file) return res.status(400).json({ error: 'No audio file uploaded' });
+router.post('/:id/audio', uploadAudio.single('audio'), async (req, res, next) => {
+  try {
+    const project = await getProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (!req.file) return res.status(400).json({ error: 'No audio file uploaded' });
 
-  project.audioFile = req.file.filename;
-  project.audioOriginalName = req.file.originalname;
-  project.updatedAt = new Date();
-  const saved = await saveProject(project);
-  res.json(saved);
+    project.audioFile = req.file.filename;
+    project.audioOriginalName = req.file.originalname;
+    project.updatedAt = new Date();
+    const saved = await saveProject(project);
+    res.json(saved);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Upload transcription file
-router.post('/:id/transcription/upload', uploadText.single('file'), async (req, res) => {
-  const project = await getProject(req.params.id);
-  if (!project) return res.status(404).json({ error: 'Project not found' });
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+router.post('/:id/transcription/upload', uploadText.single('file'), async (req, res, next) => {
+  try {
+    const project = await getProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  const content = await fs.readFile(req.file.path, 'utf-8');
-  project.transcription = content.trim();
-  project.updatedAt = new Date();
-  await fs.unlink(req.file.path).catch(() => {});
-  const saved = await saveProject(project);
-  res.json(saved);
+    const content = await fs.readFile(req.file.path, 'utf-8');
+    project.transcription = content.trim();
+    project.updatedAt = new Date();
+    await fs.unlink(req.file.path).catch(() => { });
+    const saved = await saveProject(project);
+    res.json(saved);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Upload labels file
-router.post('/:id/labels/upload', uploadText.single('file'), async (req, res) => {
-  const project = await getProject(req.params.id);
-  if (!project) return res.status(404).json({ error: 'Project not found' });
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+router.post('/:id/labels/upload', uploadText.single('file'), async (req, res, next) => {
+  try {
+    const project = await getProject(req.params.id);
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
-  const content = await fs.readFile(req.file.path, 'utf-8');
-  const labels = parseLabels(content, req.file.originalname);
-  project.labels = labels;
-  project.updatedAt = new Date();
-  await fs.unlink(req.file.path).catch(() => {});
-  const saved = await saveProject(project);
-  res.json(saved);
+    const content = await fs.readFile(req.file.path, 'utf-8');
+    const labels = parseLabels(content, req.file.originalname);
+    project.labels = labels;
+    project.updatedAt = new Date();
+    await fs.unlink(req.file.path).catch(() => { });
+    const saved = await saveProject(project);
+    res.json(saved);
+  } catch (err) {
+    next(err);
+  }
 });
 
 // Export labels
@@ -141,4 +206,46 @@ router.get('/:id/labels/export', async (req, res) => {
   res.send(labelsToAudacity(project.labels || []));
 });
 
+// Stream audio downsampled to 16kHz Mono FLAC
+router.get('/:id/audio/stream', async (req, res, next) => {
+  try {
+    const project = await getProject(req.params.id);
+    if (!project || !project.audioFile) {
+      return res.status(404).json({ error: 'Audio file not found' });
+    }
+
+    const filePath = path.join(__dirname, '../uploads', project.audioFile);
+
+    // Set headers for FLAC audio streaming
+    res.setHeader('Content-Type', 'audio/flac');
+
+    // Spawn FFmpeg to downsample to 16kHz, mono, and output flac to stdout (-)
+    const { spawn } = require('child_process');
+    const ffmpeg = spawn('ffmpeg', [
+      '-i', filePath,
+      '-ar', '16000', // Downsample to 16kHz
+      '-ac', '1',     // Convert to Mono channel
+      '-f', 'flac',   // Output format flac
+      '-'             // Pipe to stdout
+    ]);
+
+    // Pipe FFmpeg output stream directly to client response
+    ffmpeg.stdout.pipe(res);
+
+    // Handle process errors
+    ffmpeg.stderr.on('data', (data) => {
+      console.error(`FFmpeg stderr: ${data.toString()}`);
+    });
+
+    req.on('close', () => {
+      ffmpeg.kill(); // Kill ffmpeg process if user closes connection
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+
 module.exports = router;
+

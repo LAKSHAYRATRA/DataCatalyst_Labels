@@ -55,10 +55,15 @@ export async function updateLabels(projectId, labels) {
   });
 }
 
-export function getAudioUrl(filename) {
-  return `/uploads/${filename}`;
+export function getAudioUrl(projectId) {
+  return `${API_BASE}/projects/${projectId}/audio/stream`;
 }
 
 export function getExportUrl(projectId, format = 'audacity') {
   return `${API_BASE}/projects/${projectId}/labels/export?format=${format}`;
 }
+
+export async function transliterate(text, lang = 'hi') {
+  return request(`/projects/transliterate?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(lang)}`);
+}
+

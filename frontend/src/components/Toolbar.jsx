@@ -6,6 +6,8 @@ export default function Toolbar({
   currentTime,
   duration,
   zoom,
+  playbackRate,
+  onPlaybackRateChange,
   onPlayPause,
   onStop,
   onZoomChange,
@@ -45,17 +47,47 @@ export default function Toolbar({
           type="range"
           min={1}
           max={200}
-          step={1}
+          step="any"
           value={zoom}
           onChange={(e) => onZoomChange(Number(e.target.value))}
         />
         <button className="toolbar-btn" onClick={onZoomIn} title="Zoom in">
           +
         </button>
-        <span className="toolbar-zoom-value">{zoom}x</span>
+        <span className="toolbar-zoom-value">{Number(zoom).toFixed(1)}x</span>
         <button className="toolbar-btn" onClick={onFit} title="Fit to screen">
           ⊡
         </button>
+      </div>
+
+      <div className="toolbar-divider" />
+
+      <div className="toolbar-zoom">
+        <label>Speed</label>
+        <button
+          className="toolbar-btn"
+          onClick={() => onPlaybackRateChange(Math.max(0.5, playbackRate - 0.25))}
+          title="Decrease speed"
+        >
+          −
+        </button>
+        <input
+          type="range"
+          min={0.5}
+          max={3.0}
+          step={0.25}
+          value={playbackRate}
+          onChange={(e) => onPlaybackRateChange(Number(e.target.value))}
+          style={{ width: '80px' }}
+        />
+        <button
+          className="toolbar-btn"
+          onClick={() => onPlaybackRateChange(Math.min(3.0, playbackRate + 0.25))}
+          title="Increase speed"
+        >
+          +
+        </button>
+        <span className="toolbar-zoom-value">{Number(playbackRate).toFixed(2)}x</span>
       </div>
 
       <span className="toolbar-hint">

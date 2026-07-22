@@ -14,7 +14,9 @@ import {
   updateLabels,
   getAudioUrl,
   getExportUrl,
+  transliterate,
 } from './api/client';
+
 import './App.css';
 
 export default function App() {
@@ -28,12 +30,28 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [zoom, setZoom] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState(1.0);
   const [uploading, setUploading] = useState('');
   const wavesurferRef = useRef(null);
   const saveLabelsTimer = useRef(null);
 
+  const [suggestionMode, setSuggestionMode] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [activeWord, setActiveWord] = useState('');
+  const [suggestionLang, setSuggestionLang] = useState('hi');
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const activeInputRef = useRef(null);
+
+
+
+  const handlePlayPause = useCallback(() => {
+    const ws = wavesurferRef.current;
+    if (!ws) return;
+    ws.playPause();
+  }, []);
+
   useEffect(() => {
-    createProject('VocLara Session')
+    createProject('Voclara Session')
       .then((p) => {
         setProject(p);
         setLabels(p.labels || []);
@@ -42,6 +60,201 @@ export default function App() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const active = document.activeElement;
+      const isTextInput =
+        active &&
+        (active.tagName === 'TEXTAREA' ||
+          active.isContentEditable ||
+          (active.tagName === 'INPUT' &&
+            active.type !== 'range' &&
+            active.type !== 'checkbox' &&
+            active.type !== 'radio' &&
+            active.type !== 'button' &&
+            active.type !== 'submit'));
+
+      if (isTextInput) {
+        return;
+      }
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handlePlayPause();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        const ws = wavesurferRef.current;
+        if (ws) {
+          const newTime = Math.min(ws.getDuration(), ws.getCurrentTime() + 3);
+          ws.setTime(newTime);
+        }
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        const ws = wavesurferRef.current;
+        if (ws) {
+          const newTime = Math.max(0, ws.getCurrentTime() - 3);
+          ws.setTime(newTime);
+        }
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        setPlaybackRate((prev) => Math.min(3.0, prev + 0.25));
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        setPlaybackRate((prev) => Math.max(0.5, prev - 0.25));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handlePlayPause]);
+
+  const handleSelectSuggestion = useCallback((suggestion) => {
+    const inputElement = activeInputRef.current;
+    if (!inputElement) return;
+
+    const text = inputElement.value;
+    const caretPos = inputElement.selectionStart;
+    if (caretPos === null) return;
+
+    // Find the word bounds around the caret
+    let start = caretPos;
+    while (start > 0 && !/\s/.test(text[start - 1])) {
+      start--;
+    }
+    let end = caretPos;
+    while (end < text.length && !/\s/.test(text[end])) {
+      end++;
+    }
+
+    const prefix = text.slice(0, start);
+    const suffix = text.slice(end);
+    const newText = prefix + suggestion + suffix;
+
+    // Use React value setting trick to trigger controlled updates
+    const inputProto = window.HTMLInputElement.prototype;
+    const textAreaProto = window.HTMLTextAreaElement.prototype;
+    const prototype = inputElement.tagName === 'TEXTAREA' ? textAreaProto : inputProto;
+    const valueSetter = Object.getOwnPropertyDescriptor(prototype, 'value').set;
+    if (valueSetter) {
+      valueSetter.call(inputElement, newText);
+    } else {
+      inputElement.value = newText;
+    }
+
+    // Trigger synthetic input event
+    const event = new Event('input', { bubbles: true });
+    inputElement.dispatchEvent(event);
+
+    // Reposition cursor
+    const newCaretPos = start + suggestion.length;
+    setTimeout(() => {
+      try {
+        inputElement.focus();
+        inputElement.setSelectionRange(newCaretPos, newCaretPos);
+      } catch (e) {
+        console.error(e);
+      }
+    }, 10);
+
+    // Clear suggestions
+    setSuggestions([]);
+    setActiveWord('');
+  }, []);
+
+  useEffect(() => {
+    if (!suggestionMode) {
+      setSuggestions([]);
+      setActiveWord('');
+      setLoadingSuggestions(false);
+      return;
+    }
+
+    let debounceTimer = null;
+
+    const handleInput = (e) => {
+      const target = e.target;
+      if (
+        target &&
+        (target.tagName === 'TEXTAREA' ||
+          (target.tagName === 'INPUT' && target.type === 'text' && !target.classList.contains('label-search')))
+      ) {
+        activeInputRef.current = target;
+        
+        // Debounce fetching suggestions to avoid overwhelming the server on every keystroke
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+          const text = target.value;
+          const caret = target.selectionStart;
+          if (caret === null) return;
+
+          // Find the word boundaries containing caret
+          let start = caret;
+          while (start > 0 && !/\s/.test(text[start - 1])) {
+            start--;
+          }
+          let end = caret;
+          while (end < text.length && !/\s/.test(text[end])) {
+            end++;
+          }
+
+          const word = text.slice(start, end).trim();
+          // Fetch suggestions if it contains only English/Hinglish characters
+          if (word && /^[a-zA-Z]+$/.test(word)) {
+            setActiveWord(word);
+            setLoadingSuggestions(true);
+            try {
+              const data = await transliterate(word, suggestionLang);
+              setSuggestions(data.suggestions || []);
+            } catch (err) {
+              console.error(err);
+              setSuggestions([]);
+            } finally {
+              setLoadingSuggestions(false);
+            }
+          } else {
+            setSuggestions([]);
+            setActiveWord('');
+            setLoadingSuggestions(false);
+          }
+        }, 150);
+      }
+    };
+
+    document.addEventListener('input', handleInput);
+    document.addEventListener('keyup', handleInput);
+    document.addEventListener('click', handleInput);
+
+    return () => {
+      clearTimeout(debounceTimer);
+      document.removeEventListener('input', handleInput);
+      document.removeEventListener('keyup', handleInput);
+      document.removeEventListener('click', handleInput);
+    };
+  }, [suggestionMode, suggestionLang]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!suggestionMode || suggestions.length === 0) return;
+
+      // Ctrl + [1-9] or Ctrl + 0 hotkeys (supports up to 10 suggestions)
+      if (e.ctrlKey && ((e.key >= '1' && e.key <= '9') || e.key === '0')) {
+        e.preventDefault();
+        const idx = e.key === '0' ? 9 : parseInt(e.key) - 1;
+        if (idx < suggestions.length) {
+          handleSelectSuggestion(suggestions[idx]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [suggestionMode, suggestions, handleSelectSuggestion]);
+
 
   const debouncedSaveLabels = useCallback(
     (newLabels) => {
@@ -113,11 +326,7 @@ export default function App() {
     }
   };
 
-  const handlePlayPause = () => {
-    const ws = wavesurferRef.current;
-    if (!ws) return;
-    ws.playPause();
-  };
+
 
   const handleStop = () => {
     const ws = wavesurferRef.current;
@@ -155,13 +364,13 @@ export default function App() {
     }, 600);
   };
 
-  const audioUrl = project?.audioFile ? getAudioUrl(project.audioFile) : null;
+  const audioUrl = project?.audioFile ? getAudioUrl(project._id) : null;
 
   if (loading) {
     return (
       <div className="loading-screen">
         <div className="loading-spinner" />
-        <p>Loading VocLara...</p>
+        <p>Loading Voclara...</p>
       </div>
     );
   }
@@ -172,6 +381,10 @@ export default function App() {
         projectName={project?.name}
         hasLabels={labels.length > 0}
         onExport={handleExport}
+        suggestionMode={suggestionMode}
+        onSuggestionModeChange={setSuggestionMode}
+        suggestionLang={suggestionLang}
+        onSuggestionLangChange={setSuggestionLang}
       />
 
       <div className="app-main">
@@ -183,6 +396,8 @@ export default function App() {
                 currentTime={currentTime}
                 duration={duration}
                 zoom={zoom}
+                playbackRate={playbackRate}
+                onPlaybackRateChange={setPlaybackRate}
                 onPlayPause={handlePlayPause}
                 onStop={handleStop}
                 onZoomChange={handleZoomChange}
@@ -194,6 +409,8 @@ export default function App() {
                 audioUrl={audioUrl}
                 labels={labels}
                 zoom={zoom}
+                playbackRate={playbackRate}
+                onZoomChange={handleZoomChange}
                 activeLabelId={activeLabelId}
                 onLabelsChange={handleLabelsChange}
                 onActiveLabelChange={setActiveLabelId}
@@ -202,11 +419,16 @@ export default function App() {
                 wavesurferRef={wavesurferRef}
                 isPlaying={isPlaying}
                 setIsPlaying={setIsPlaying}
+                suggestionMode={suggestionMode}
+                suggestions={suggestions}
+                activeWord={activeWord}
+                onSelectSuggestion={handleSelectSuggestion}
+                loadingSuggestions={loadingSuggestions}
               />
             </>
           ) : (
             <div className="empty-state">
-              <h2>Welcome to VocLara</h2>
+              <h2>Welcome to Voclara</h2>
               <p>
                 Upload an audio file from the panel on the right to start editing
                 word-level timestamps. Zoom, scroll, and drag label boundaries
@@ -297,11 +519,13 @@ export default function App() {
                 activeLabelId={activeLabelId}
                 onSelect={setActiveLabelId}
                 onPlay={handlePlayLabel}
+                onLabelsChange={handleLabelsChange}
               />
             )}
           </div>
         </aside>
       </div>
+
     </div>
   );
 }

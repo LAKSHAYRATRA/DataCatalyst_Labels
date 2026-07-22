@@ -17,6 +17,11 @@ if (!fs.existsSync(uploadsDir)) {
 
 connectDB();
 
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
 app.use(
   cors({
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
@@ -31,7 +36,7 @@ app.use('/uploads', express.static(uploadsDir));
 app.use('/api/projects', projectRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'VocLara API' });
+  res.json({ status: 'ok', service: 'Voclara API' });
 });
 
 app.use((err, req, res, next) => {
@@ -40,5 +45,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`VocLara API running on http://localhost:${PORT}`);
+  console.log(`Voclara API running on http://localhost:${PORT}`);
 });
