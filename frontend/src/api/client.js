@@ -67,3 +67,21 @@ export async function transliterate(text, lang = 'hi') {
   return request(`/projects/transliterate?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(lang)}`);
 }
 
+export async function saveSegmentation(data) {
+  return request('/segmentation/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getSegmentations() {
+  return request('/segmentation/all');
+}
+
+export async function deleteSegmentation(fileName) {
+  return request(`/segmentation/${encodeURIComponent(fileName)}`, {
+    method: 'DELETE',
+  });
+}
+

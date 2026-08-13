@@ -1,0 +1,680 @@
+.segmentation-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Audacity DAW Workspace Layout */
+.seg-workspace-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Audacity Fixed Left Track Control Panel (TCP) */
+.seg-tcp-panel {
+  width: 92px;
+  min-width: 92px;
+  background: #0f172a;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.4);
+  user-select: none;
+}
+
+.seg-tcp-ruler-space {
+  height: 28px;
+  background: #1e293b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.seg-tcp-title {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+/* Individual Audacity Track Control Box */
+.seg-tcp-box {
+  height: 184px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+  position: relative;
+}
+
+.seg-tcp-box.track-1 {
+  border-left: 3px solid #38bdf8;
+}
+
+.seg-tcp-box.track-2 {
+  border-left: 3px solid #c084fc;
+}
+
+.seg-tcp-btn.mute-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 2px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  height: 20px;
+  flex: 0 0 auto;
+  min-width: 0;
+  box-shadow: none;
+}
+
+.seg-tcp-btn.mute-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.seg-tcp-btn.mute-btn.active {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #f87171;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+.seg-tcp-pan {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.seg-tcp-pan label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.seg-tcp-pan input[type='range'] {
+  width: 100%;
+  accent-color: #38bdf8;
+  cursor: pointer;
+  height: 4px;
+}
+
+.seg-tcp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.seg-canvas-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: auto;
+  position: relative;
+}
+
+.seg-canvas-inner {
+  position: relative;
+  min-height: 380px;
+  cursor: crosshair;
+}
+
+.seg-external-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 25;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.seg-external-strip.strip-top {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.seg-external-strip.strip-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.seg-track-container {
+  position: relative;
+  background: rgba(15, 23, 42, 0.6);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+  min-height: 180px;
+}
+
+.seg-track-header {
+  position: sticky;
+  left: 0;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(8px);
+  width: fit-content;
+  max-width: 100vw;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.4);
+}
+
+.seg-track-header.bottom-header {
+  position: sticky;
+  left: 0;
+  z-index: 22;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0 8px 8px 0;
+}
+
+.seg-mute-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.seg-mute-btn:hover {
+  background: rgba(51, 65, 85, 0.9);
+  border-color: #38bdf8;
+}
+
+.seg-mute-btn.muted {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+}
+
+.seg-track-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  white-space: nowrap;
+  display: inline-block;
+  text-align: center;
+}
+
+.tag-spk1 {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.tag-spk2 {
+  background: rgba(192, 132, 252, 0.15);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.3);
+}
+
+.seg-track-name {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.seg-meta-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.seg-meta-badge {
+  font-size: 10px;
+  font-family: var(--mono);
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.seg-waveform-box {
+  width: 100%;
+  position: relative;
+}
+
+/* Active Selection Highlight Overlay Across BOTH Waveforms */
+.seg-selection-overlay {
+  position: absolute;
+  top: 28px;
+  bottom: 0;
+  background: rgba(99, 102, 241, 0.22);
+  border-left: 2px solid #6366f1;
+  border-right: 2px solid #06b6d4;
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.3);
+  pointer-events: auto;
+  z-index: 15;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.seg-sel-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 16px;
+  cursor: ew-resize;
+  z-index: 30;
+  pointer-events: auto;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.seg-sel-handle.left {
+  left: -8px;
+  border-left: 4px solid #6366f1;
+  border-radius: 4px 0 0 4px;
+}
+
+.seg-sel-handle.right {
+  right: -8px;
+  border-right: 4px solid #06b6d4;
+  border-radius: 0 4px 4px 0;
+}
+
+.seg-sel-handle:hover {
+  background: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 14px rgba(6, 182, 212, 0.9);
+}
+
+.seg-selection-badge {
+  margin-top: 6px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #38bdf8;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+/* Combined Segments Styling */
+.seg-combined-overlay {
+  position: absolute;
+  top: 28px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.seg-combined-region {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 6px;
+  user-select: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  z-index: 6;
+}
+
+.seg-combined-region.speaker_01 {
+  top: 4px;
+  bottom: 4px;
+  height: auto;
+  background: rgba(2, 132, 199, 0.22);
+  border: 1px solid rgba(56, 189, 248, 0.7);
+}
+
+.seg-combined-region.speaker_02 {
+  top: 4px;
+  bottom: 4px;
+  height: auto;
+  background: rgba(124, 58, 237, 0.22);
+  border: 1px solid rgba(192, 132, 252, 0.7);
+}
+
+.seg-combined-region.both {
+  top: 4px;
+  bottom: 4px;
+  height: auto;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.7);
+}
+
+.seg-combined-region.active {
+  box-shadow: 0 0 18px var(--accent-glow);
+  z-index: 10;
+  border-width: 2px;
+}
+
+.seg-combined-header {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(6px);
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  z-index: 20;
+  pointer-events: auto;
+  max-width: 90%;
+  white-space: nowrap;
+}
+
+.seg-speaker-select {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.seg-dur-text {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--mono);
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seg-del-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 4px;
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 1px 5px;
+  transition: all 0.15s ease;
+  position: relative;
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.seg-del-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #f87171;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+}
+
+.seg-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  cursor: ew-resize;
+  z-index: 25;
+  pointer-events: auto;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.seg-handle.left {
+  left: -7px;
+  border-left: 4px solid #38bdf8;
+  border-radius: 4px 0 0 4px;
+}
+
+.seg-handle.right {
+  right: -7px;
+  border-right: 4px solid #38bdf8;
+  border-radius: 0 4px 4px 0;
+}
+
+.seg-handle:hover {
+  background: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+}
+
+/* Internal 100ms Chunk Micro Scale GPU CSS Pattern */
+.seg-chunk-scale {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 18px;
+  background-color: rgba(15, 23, 42, 0.45);
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.28) 0px,
+    rgba(255, 255, 255, 0.28) 1px,
+    transparent 1px,
+    transparent var(--tick-gap, 10px)
+  );
+  pointer-events: none;
+  overflow: hidden;
+  user-select: none;
+}
+
+.seg-chunk-scale.top {
+  top: 0;
+  bottom: auto;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 6px 6px 0 0;
+}
+
+.seg-chunk-scale.bottom {
+  bottom: 0;
+  top: auto;
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 0 0 6px 6px;
+}
+
+.seg-200ms-bound {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.seg-200ms-bound.start {
+  border-right: 1px solid rgba(56, 189, 248, 0.5);
+}
+
+.seg-200ms-bound.end {
+  background: #c084fc;
+  box-shadow: 0 0 8px rgba(192, 132, 252, 0.8);
+  border-left: 1px solid rgba(192, 132, 252, 0.5);
+}
+
+.seg-200ms-label {
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  font-size: 8.5px;
+  font-family: var(--mono);
+  font-weight: 800;
+  color: #38bdf8;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.seg-200ms-bound.end .seg-200ms-label {
+  left: auto;
+  right: 4px;
+  color: #c084fc;
+}
+
+/* Custom In-Screen Warning Modal Backdrop */
+.seg-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: modalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.seg-modal-card {
+  width: 100%;
+  max-width: 440px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 24px rgba(239, 68, 68, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.seg-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.seg-modal-icon-badge {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+.seg-modal-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f87171;
+  letter-spacing: -0.2px;
+}
+
+.seg-modal-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #cbd5e1;
+}
+
+.seg-modal-body strong {
+  color: #ffffff;
+}
+
+.seg-modal-alert-box {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid #ef4444;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #fca5a5;
+  font-weight: 600;
+}
+
+.seg-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.seg-modal-btn {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.seg-modal-btn.cancel {
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.seg-modal-btn.cancel:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.seg-modal-btn.confirm-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
+}
+
+.seg-modal-btn.confirm-danger:hover {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.7);
+}

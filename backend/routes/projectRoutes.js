@@ -206,7 +206,7 @@ router.get('/:id/labels/export', async (req, res) => {
   res.send(labelsToAudacity(project.labels || []));
 });
 
-// Stream audio downsampled to 16kHz Mono FLAC
+// Stream audio file directly with native HTTP Range support
 router.get('/:id/audio/stream', async (req, res, next) => {
   try {
     const project = await getProject(req.params.id);
@@ -215,31 +215,18 @@ router.get('/:id/audio/stream', async (req, res, next) => {
     }
 
     const filePath = path.join(__dirname, '../uploads', project.audioFile);
+    try {
+      await fs.access(filePath);
+    } catch {
+      return res.status(404).json({ error: 'Audio file not found on disk' });
+    }
 
-    // Set headers for FLAC audio streaming
-    res.setHeader('Content-Type', 'audio/flac');
+    // Set anti-caching & anti-download protection headers
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
 
-    // Spawn FFmpeg to downsample to 16kHz, mono, and output flac to stdout (-)
-    const { spawn } = require('child_process');
-    const ffmpeg = spawn('ffmpeg', [
-      '-i', filePath,
-      '-ar', '16000', // Downsample to 16kHz
-      '-ac', '1',     // Convert to Mono channel
-      '-f', 'flac',   // Output format flac
-      '-'             // Pipe to stdout
-    ]);
-
-    // Pipe FFmpeg output stream directly to client response
-    ffmpeg.stdout.pipe(res);
-
-    // Handle process errors
-    ffmpeg.stderr.on('data', (data) => {
-      console.error(`FFmpeg stderr: ${data.toString()}`);
-    });
-
-    req.on('close', () => {
-      ffmpeg.kill(); // Kill ffmpeg process if user closes connection
-    });
+    res.sendFile(filePath);
   } catch (err) {
     next(err);
   }

@@ -10,6 +10,8 @@ export default function WaveformCanvas({
   labels,
   zoom,
   playbackRate,
+  onPlaybackRateChange,
+  onPlayPause,
   onZoomChange,
   activeLabelId,
   onLabelsChange,
@@ -25,6 +27,7 @@ export default function WaveformCanvas({
   activeWord = '',
   onSelectSuggestion,
   loadingSuggestions,
+  onPlayLabel,
 }) {
 
 
@@ -40,6 +43,14 @@ export default function WaveformCanvas({
   const rulerPlayheadRef = useRef(null);
   const trackPlayheadRef = useRef(null);
   const updatePlayheadRef = useRef(null);
+  const lastTimeUpdateRef = useRef(0);
+  const pendingZoomRef = useRef(null);
+  const targetZoomRef = useRef(zoom);
+  const zoomDebounceTimer = useRef(null);
+
+  useEffect(() => {
+    targetZoomRef.current = zoom;
+  }, [zoom]);
 
   // Derived state & view boundaries
   const containerWidth = scrollRef.current?.clientWidth || 800;
@@ -79,6 +90,8 @@ export default function WaveformCanvas({
 
   const selectionDragRef = useRef(null);
   const selectionResizeRef = useRef(null);
+  const visibleRangeTimer = useRef(null);
+
   const syncScroll = useCallback(() => {
     const scroll = scrollRef.current;
     if (!scroll) return;
@@ -89,13 +102,18 @@ export default function WaveformCanvas({
       labelsTrackRef.current.scrollLeft = scroll.scrollLeft;
     }
 
-    const left = scroll.scrollLeft;
-    const width = scroll.clientWidth || 800;
-    const padding = 200; // px margin
-    setVisibleRange({
-      start: Math.max(0, (left - padding) / pxPerSecRef.current),
-      end: (left + width + padding) / pxPerSecRef.current,
-    });
+    if (!visibleRangeTimer.current) {
+      visibleRangeTimer.current = setTimeout(() => {
+        visibleRangeTimer.current = null;
+        const left = scroll.scrollLeft;
+        const width = scroll.clientWidth || 800;
+        const padding = 300;
+        setVisibleRange({
+          start: Math.max(0, (left - padding) / pxPerSecRef.current),
+          end: (left + width + padding) / pxPerSecRef.current,
+        });
+      }, 50);
+    }
   }, []);
 
   useEffect(() => {
@@ -111,11 +129,17 @@ export default function WaveformCanvas({
         e.preventDefault();
         e.stopPropagation();
 
-        const factor = e.deltaY < 0 ? 1.08 : 0.92;
-        onZoomChangeRef.current?.((z) => {
-          const nextZoom = z * factor;
-          return Math.max(1, Math.min(200, nextZoom));
-        });
+        const delta = Math.max(-50, Math.min(50, e.deltaY));
+        const factor = Math.pow(1.003, -delta);
+
+        targetZoomRef.current = Math.max(1, Math.min(300, targetZoomRef.current * factor));
+
+        if (!pendingZoomRef.current) {
+          pendingZoomRef.current = requestAnimationFrame(() => {
+            pendingZoomRef.current = null;
+            onZoomChangeRef.current?.(targetZoomRef.current);
+          });
+        }
       } else {
         // Intercept all wheel/scroll events on the waveform to block trackpad history gestures
         e.preventDefault();
@@ -137,6 +161,9 @@ export default function WaveformCanvas({
     rootEl.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
       rootEl.removeEventListener('wheel', handleWheel);
+      if (pendingZoomRef.current) {
+        cancelAnimationFrame(pendingZoomRef.current);
+      }
     };
   }, [syncScroll]);
 
@@ -144,6 +171,50 @@ export default function WaveformCanvas({
   useEffect(() => {
     syncScroll();
   }, [duration, syncScroll]);
+
+  // Global Keyboard Shortcuts from CONTROLS.md: Spacebar, Left/Right 3s Seek, Up/Down Speed, +/- Zoom
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (document.activeElement && document.activeElement !== document.body) {
+          document.activeElement.blur();
+        }
+        onPlayPause?.();
+      } else if (e.code === 'ArrowRight') {
+        e.preventDefault();
+        const ws = wsRef.current;
+        if (ws) {
+          const newTime = Math.min(duration, ws.getCurrentTime() + 3);
+          ws.setTime(newTime);
+        }
+      } else if (e.code === 'ArrowLeft') {
+        e.preventDefault();
+        const ws = wsRef.current;
+        if (ws) {
+          const newTime = Math.max(0, ws.getCurrentTime() - 3);
+          ws.setTime(newTime);
+        }
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        onPlaybackRateChange?.(Math.min(3.0, Number((playbackRate + 0.25).toFixed(2))));
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        onPlaybackRateChange?.(Math.max(0.5, Number((playbackRate - 0.25).toFixed(2))));
+      } else if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        onZoomChange?.(Math.min(300, zoom * 1.5));
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        onZoomChange?.(Math.max(1, zoom / 1.5));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onPlayPause, onZoomChange, zoom, duration, playbackRate, onPlaybackRateChange]);
 
   const updatePlayhead = useCallback((time) => {
     const x = time * pxPerSecRef.current;
@@ -207,35 +278,29 @@ export default function WaveformCanvas({
     });
 
     ws.on('audioprocess', (time) => {
-      updatePlayheadRef.current?.(time);
-      onTimeUpdate?.(time);
+      let clampedTime = time;
 
-      // Loop selection if active, otherwise loop active label region
+      // Loop selection if active with 20ms predictive reset buffer
       if (selectionRef.current) {
         const start = selectionRef.current.start;
         const end = selectionRef.current.end;
-        if (end > start && time >= end) {
-          ws.setTime(start);
-        }
-      } else if (activeLabelIdRef.current) {
-        const drag = draggingRef.current;
-        let start = 0;
-        let end = 0;
-
-        if (drag && drag.labelId === activeLabelIdRef.current) {
-          start = drag.currentStart;
-          end = drag.currentEnd;
-        } else {
-          const activeLabel = labelsRef.current.find((l) => l.id === activeLabelIdRef.current);
-          if (activeLabel) {
-            start = activeLabel.start;
-            end = activeLabel.end;
+        if (end > start) {
+          if (time >= end - 0.06) {
+            ws.setTime(start);
+            updatePlayheadRef.current?.(start);
+            onTimeUpdate?.(start);
+            return;
           }
+          clampedTime = Math.min(time, end);
         }
+      }
 
-        if (end > start && time >= end) {
-          ws.setTime(start);
-        }
+      updatePlayheadRef.current?.(clampedTime);
+
+      const now = Date.now();
+      if (now - lastTimeUpdateRef.current > 100) {
+        lastTimeUpdateRef.current = now;
+        onTimeUpdate?.(clampedTime);
       }
     });
 
@@ -259,11 +324,28 @@ export default function WaveformCanvas({
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws || !duration) return;
-    ws.zoom(pxPerSec);
+
+    if (zoomDebounceTimer.current) {
+      clearTimeout(zoomDebounceTimer.current);
+    }
+
+    zoomDebounceTimer.current = setTimeout(() => {
+      zoomDebounceTimer.current = null;
+      if (wsRef.current) {
+        wsRef.current.zoom(pxPerSec);
+      }
+    }, 100);
+
     const inner = containerRef.current?.parentElement;
     if (inner) {
       inner.style.width = `${duration * pxPerSec}px`;
     }
+
+    return () => {
+      if (zoomDebounceTimer.current) {
+        clearTimeout(zoomDebounceTimer.current);
+      }
+    };
   }, [zoom, duration, pxPerSec]);
 
   // Update playback rate (speed)
@@ -303,6 +385,7 @@ export default function WaveformCanvas({
       regionEl,
       currentStart: label.start,
       currentEnd: label.end,
+      hasMoved: false,
     };
     onActiveLabelChange(labelId);
   };
@@ -357,6 +440,9 @@ export default function WaveformCanvas({
       if (!drag || !labelsTrackRef.current) return;
 
       const deltaX = e.clientX - drag.startX;
+      if (Math.abs(deltaX) > 3) {
+        drag.hasMoved = true;
+      }
       const deltaTime = deltaX / pxPerSec;
 
       let newStart = drag.labelStart;
@@ -445,10 +531,15 @@ export default function WaveformCanvas({
   }, [handleMouseMove, handleMouseUp]);
 
   const playLabel = (label) => {
-    const ws = wsRef.current;
-    if (!ws) return;
     onActiveLabelChange(label.id);
-    ws.play(label.start, label.end);
+    if (onPlayLabel) {
+      onPlayLabel(label);
+    } else {
+      const ws = wsRef.current;
+      if (!ws) return;
+      ws.setTime(label.start);
+      ws.play();
+    }
   };
 
   const handleLabelMoveStart = (e, labelId) => {
@@ -466,6 +557,7 @@ export default function WaveformCanvas({
       regionEl,
       currentStart: label.start,
       currentEnd: label.end,
+      hasMoved: false,
     };
     onActiveLabelChange(labelId);
   };
@@ -615,34 +707,52 @@ export default function WaveformCanvas({
           {labels
             .filter((label) => label.end >= visibleRange.start && label.start <= visibleRange.end)
             .map((label) => {
-            const left = timeToX(label.start);
-            const width = Math.max(4, timeToX(label.end) - left);
-            const isActive = label.id === activeLabelId;
+              const left = timeToX(label.start);
+              const width = Math.max(2, timeToX(label.end) - left);
+              const isActive = label.id === activeLabelId;
 
-            return (
-              <div
-                key={label.id}
-                className={`label-region ${isActive ? 'active' : ''}`}
-                style={{ left, width }}
-                onMouseDown={(e) => handleLabelMoveStart(e, label.id)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  playLabel(label);
-                }}
-                title={`${label.text} (${formatTime(label.start)} – ${formatTime(label.end)})`}
-              >
+              if (!isActive && width < 14) {
+                return (
+                  <div
+                    key={label.id}
+                    className="label-region micro"
+                    style={{ left, width }}
+                    onMouseDown={(e) => handleLabelMoveStart(e, label.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (draggingRef.current?.hasMoved) return;
+                      playLabel(label);
+                    }}
+                    title={`${label.text} (${formatTime(label.start)} – ${formatTime(label.end)})`}
+                  />
+                );
+              }
+
+              return (
                 <div
-                  className="label-handle left"
-                  onMouseDown={(e) => handleLabelMouseDown(e, label.id, 'left')}
-                />
-                <span className="label-region-text">{label.text}</span>
-                <div
-                  className="label-handle right"
-                  onMouseDown={(e) => handleLabelMouseDown(e, label.id, 'right')}
-                />
-              </div>
-            );
-          })}
+                  key={label.id}
+                  className={`label-region ${isActive ? 'active' : ''}`}
+                  style={{ left, width }}
+                  onMouseDown={(e) => handleLabelMoveStart(e, label.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (draggingRef.current?.hasMoved) return;
+                    playLabel(label);
+                  }}
+                  title={`${label.text} (${formatTime(label.start)} – ${formatTime(label.end)})`}
+                >
+                  <div
+                    className="label-handle left"
+                    onMouseDown={(e) => handleLabelMouseDown(e, label.id, 'left')}
+                  />
+                  <span className="label-region-text">{label.text}</span>
+                  <div
+                    className="label-handle right"
+                    onMouseDown={(e) => handleLabelMouseDown(e, label.id, 'right')}
+                  />
+                </div>
+              );
+            })}
           <div
             className="playhead-line"
             ref={trackPlayheadRef}

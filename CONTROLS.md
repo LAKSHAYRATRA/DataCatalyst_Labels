@@ -21,13 +21,18 @@ This document catalogs the custom keyboard, mouse, and trackpad controls configu
 
 | Shortcut | Action | Context Bypass | Avoided Browser Default |
 | :--- | :--- | :--- | :--- |
-| **`Spacebar`** | Toggle Play / Pause | Automatically bypassed when typing in text fields or transcription editor. | **Blocked Page Scroll:** Prevents spacebar from scrolling down the webpage. |
-| **`Right Arrow`** | Skip 3 seconds forward (hold to seek continuously) | Automatically bypassed in text fields. | **Blocked Default Action:** Blocks caret moving or text behavior outside text-entry. |
-| **`Left Arrow`** | Skip 3 seconds backward (hold to seek continuously) | Automatically bypassed in text fields. | **Blocked Default Action:** Blocks caret moving or text behavior outside text-entry. |
-| **`Up Arrow`** | Increase Playback Speed by +0.25x (Max 3.0x) | Automatically bypassed in text fields. | **Blocked Page Scroll:** Prevents arrow keys from scrolling the webpage. |
-| **`Down Arrow`** | Decrease Playback Speed by -0.25x (Min 0.5x) | Automatically bypassed in text fields. | **Blocked Page Scroll:** Prevents arrow keys from scrolling the webpage. |
+| **`S` Key** | Create Segment from Active Selection | Automatically bypassed in text fields. | Instantly converts draft selection into segment (ID format: `callid_segmentid`). |
+| **`Delete`** / **`Backspace`** | Delete Selected Segment | Automatically bypassed in text fields. | Deletes the currently selected segment region (`activeSegmentId`). |
+| **`+`** / **`=`** | Zoom In Waveform | Automatically bypassed in text fields. | Step zooms in up to `300.0x` max. |
+| **`-`** / **`_`** | Zoom Out Waveform | Automatically bypassed in text fields. | Step zooms out down to `1.0x` fit screen. |
 
 ---
+
+## ✂️ Segment Selection & Deletion Controls
+
+* **Select Segment:** Click anywhere inside a created segment region to select it (highlights with glowing border indicator).
+* **Delete Segment:** Select a segment and click the **🗑️ Delete Segment** button in the toolbar (or press **`Delete`** / **`Backspace`** on keyboard).
+* **Delete Button (`✕`):** Click the red `✕` button on any individual segment header to delete it directly.
 
 ## 🛡️ Global Web App Protection
 

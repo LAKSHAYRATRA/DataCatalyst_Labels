@@ -46,15 +46,17 @@ function parseAudacityLabels(text) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
-    // Tab-separated: start\tend\ttext  OR  start\tend
-    const parts = line.split('\t');
+    let parts = line.split('\t');
+    if (parts.length < 2) {
+      parts = line.split(/\s+/);
+    }
     if (parts.length >= 2) {
       const start = parseFloat(parts[0]);
       const end = parseFloat(parts[1]);
-      const labelText = parts.slice(2).join('\t').trim();
+      const labelText = parts.slice(2).join(' ').trim();
       if (!isNaN(start) && !isNaN(end)) {
         labels.push({
-          id: `label-${i}`,
+          id: `label-${i}-${Math.random().toString(36).substr(2, 6)}`,
           start,
           end,
           text: labelText,

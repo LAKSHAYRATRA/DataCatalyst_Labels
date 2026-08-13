@@ -1,7 +1,11 @@
+import { memo } from 'react';
 import './Header.css';
 
-export default function Header({
+function Header({
   projectName,
+  mode,
+  onGoHome,
+  onSelectMode,
   onExport,
   hasLabels,
   suggestionMode,
@@ -11,12 +15,19 @@ export default function Header({
 }) {
   return (
     <header className="header">
-      <div className="header-brand">
+      <div className="header-brand" onClick={onGoHome} style={{ cursor: 'pointer' }} title="Return to Homepage">
         <img src="/logo.png" alt="Voclara" className="header-logo" />
         <h1 className="header-title">Voclara</h1>
-        <span className="header-subtitle">Audio Timestamp Editor</span>
+        <span className="header-subtitle">
+          {mode === 'segmentation' ? 'Segmentation Mode' : mode === 'transcription' ? 'Transcription Mode' : 'Audio Editor'}
+        </span>
       </div>
       <div className="header-actions">
+        {mode && mode !== 'home' && (
+          <button className="btn btn-secondary mode-switch-btn" onClick={onGoHome} title="Switch Mode">
+            🏠 Switch Mode
+          </button>
+        )}
         <div className="suggestion-toggle-container">
           <span className="suggestion-toggle-label">Suggestions Mode</span>
           <label className="switch">
@@ -41,7 +52,7 @@ export default function Header({
               <option value="bn">Bengali (বাংলা)</option>
               <option value="mr">Marathi (मराठी)</option>
               <option value="kn">Kannada (ಕನ್ನಡ)</option>
-              <option value="ml">Malayalam (മലയാളம்)</option>
+              <option value="ml">Malayalam (മലയാളം)</option>
               <option value="gu">Gujarati (ગુજરાતી)</option>
               <option value="pa">Punjabi (ਪੰਜਾਬੀ)</option>
               <option value="ur">Urdu (اردو)</option>
@@ -63,4 +74,6 @@ export default function Header({
     </header>
   );
 }
+
+export default memo(Header);
 
